@@ -7,8 +7,9 @@ object TweakRepository {
             id = "info_battery",
             category = TweakCategoryType.INFO,
             title = "Detailed Battery Status",
-            description = "Displays battery health, level, voltage, temperature, and charging status.",
-            commandTemplate = "dumpsys battery"
+            description = "Displays battery health, level, voltage, temperature, and charging status. Read via native Android API (no ADB required).",
+            commandTemplate = "__native_battery__",
+            requiresElevation = false
         ),
         TweakItem(
             id = "info_cpu",
@@ -22,14 +23,16 @@ object TweakRepository {
             category = TweakCategoryType.INFO,
             title = "Screen Resolution & Density",
             description = "Queries active screen physical size and display DPI density.",
-            commandTemplate = "wm size && wm density"
+            commandTemplate = "wm size && wm density",
+            requiresElevation = true
         ),
         TweakItem(
             id = "info_ram",
             category = TweakCategoryType.INFO,
             title = "Real-Time RAM Usage",
             description = "Shows live system memory allocation, swap, free RAM, and process memory details.",
-            commandTemplate = "dumpsys meminfo"
+            commandTemplate = "dumpsys meminfo",
+            requiresElevation = true
         ),
         TweakItem(
             id = "info_system",
@@ -43,7 +46,8 @@ object TweakRepository {
             category = TweakCategoryType.INFO,
             title = "Network Status & IP",
             description = "Lists network interfaces, IP addresses (IPv4 & IPv6), and link states.",
-            commandTemplate = "ip addr show"
+            commandTemplate = "ip addr show",
+            requiresElevation = true
         ),
         TweakItem(
             id = "info_uptime",
@@ -57,7 +61,8 @@ object TweakRepository {
             category = TweakCategoryType.INFO,
             title = "Thermal Sensors & Temperature",
             description = "Monitors system thermal zones, CPU/GPU temperatures, and throttling levels.",
-            commandTemplate = "dumpsys thermal"
+            commandTemplate = "dumpsys thermal",
+            requiresElevation = true
         ),
         TweakItem(
             id = "info_bootloader",
@@ -81,7 +86,8 @@ object TweakRepository {
             title = "Disable / Freeze System App",
             description = "Freezes a system app or bloatware package for User 0.",
             commandTemplate = "pm disable-user --user 0 {package_name}",
-            inputType = InputType.SingleText("Package Name", "e.g. com.samsung.android.bouldering")
+            inputType = InputType.SingleText("Package Name", "e.g. com.samsung.android.bouldering"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_enable",
@@ -89,7 +95,8 @@ object TweakRepository {
             title = "Re-enable Frozen App",
             description = "Unfreezes and enables a previously disabled application package.",
             commandTemplate = "pm enable {package_name}",
-            inputType = InputType.SingleText("Package Name", "e.g. com.samsung.android.bouldering")
+            inputType = InputType.SingleText("Package Name", "e.g. com.samsung.android.bouldering"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_uninstall",
@@ -97,7 +104,8 @@ object TweakRepository {
             title = "Uninstall App for Current User",
             description = "Removes a system package for User 0 while keeping base APK system binary.",
             commandTemplate = "pm uninstall -k --user 0 {package_name}",
-            inputType = InputType.SingleText("Package Name", "e.g. com.facebook.katana")
+            inputType = InputType.SingleText("Package Name", "e.g. com.facebook.katana"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_grant_perm",
@@ -105,7 +113,8 @@ object TweakRepository {
             title = "Grant Special Permission",
             description = "Grants a sensitive permission (e.g. WRITE_SECURE_SETTINGS) to an application.",
             commandTemplate = "pm grant {package_name} {permission}",
-            inputType = InputType.TwoText("Package Name", "e.g. com.example.app", "Permission", "e.g. android.permission.WRITE_SECURE_SETTINGS")
+            inputType = InputType.TwoText("Package Name", "e.g. com.example.app", "Permission", "e.g. android.permission.WRITE_SECURE_SETTINGS"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_revoke_perm",
@@ -113,7 +122,8 @@ object TweakRepository {
             title = "Revoke App Permission",
             description = "Revokes a specific permission from an installed package.",
             commandTemplate = "pm revoke {package_name} {permission}",
-            inputType = InputType.TwoText("Package Name", "e.g. com.example.app", "Permission", "e.g. android.permission.CAMERA")
+            inputType = InputType.TwoText("Package Name", "e.g. com.example.app", "Permission", "e.g. android.permission.CAMERA"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_force_stop",
@@ -121,7 +131,8 @@ object TweakRepository {
             title = "Force Stop App",
             description = "Immediately terminates all active processes and services of a package.",
             commandTemplate = "am force-stop {package_name}",
-            inputType = InputType.SingleText("Package Name", "e.g. com.instagram.android")
+            inputType = InputType.SingleText("Package Name", "e.g. com.instagram.android"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_clear_data",
@@ -129,7 +140,8 @@ object TweakRepository {
             title = "Clear Data & Cache",
             description = "Wipes all user data, cached files, and databases for a package.",
             commandTemplate = "pm clear {package_name}",
-            inputType = InputType.SingleText("Package Name", "e.g. com.whatsapp")
+            inputType = InputType.SingleText("Package Name", "e.g. com.whatsapp"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_restrict_bg",
@@ -137,7 +149,8 @@ object TweakRepository {
             title = "Restrict Background Execution",
             description = "Prevents an app from executing background tasks or wake locks.",
             commandTemplate = "cmd appops set {package_name} RUN_IN_BACKGROUND ignore",
-            inputType = InputType.SingleText("Package Name", "e.g. com.facebook.orca")
+            inputType = InputType.SingleText("Package Name", "e.g. com.facebook.orca"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "app_list_packages",
@@ -152,7 +165,8 @@ object TweakRepository {
             title = "Install APK File",
             description = "Installs an APK directly from a device file path.",
             commandTemplate = "pm install -r {path_to_apk}",
-            inputType = InputType.SingleText("APK File Path", "e.g. /sdcard/Download/app.apk")
+            inputType = InputType.SingleText("APK File Path", "e.g. /sdcard/Download/app.apk"),
+            requiresElevation = true
         ),
 
         // --- SETTINGS CATEGORY ---
@@ -170,7 +184,8 @@ object TweakRepository {
             title = "System Dark Mode",
             description = "Force enable or disable system-wide Dark Theme.",
             commandTemplate = "cmd uimode night {option}",
-            inputType = InputType.Options("Dark Mode", listOf("yes", "no"), defaultIndex = 0)
+            inputType = InputType.Options("Dark Mode", listOf("yes", "no"), defaultIndex = 0),
+            requiresElevation = true
         ),
         TweakItem(
             id = "set_dpi",
@@ -178,7 +193,8 @@ object TweakRepository {
             title = "Custom Display Density (DPI)",
             description = "Changes screen display DPI scaling.",
             commandTemplate = "wm density {density_value}",
-            inputType = InputType.SingleText("DPI Value", "e.g. 420 or reset", defaultValue = "420")
+            inputType = InputType.SingleText("DPI Value", "e.g. 420 or reset", defaultValue = "420"),
+            requiresElevation = true
         ),
         TweakItem(
             id = "set_clean_statusbar",
@@ -243,7 +259,8 @@ object TweakRepository {
             description = "Triggers an immediate recovery wipe of all user data!",
             commandTemplate = "recovery --wipe_data",
             isDanger = true,
-            dangerDescription = "This command WILL WIPE ALL USER DATA, APPS, AND FILES from the device! It will immediately reboot into recovery and perform a factory reset."
+            dangerDescription = "This command WILL WIPE ALL USER DATA, APPS, AND FILES from the device! It will immediately reboot into recovery and perform a factory reset.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_reboot_bootloader",
@@ -252,7 +269,8 @@ object TweakRepository {
             description = "Reboots device into fastboot/bootloader mode.",
             commandTemplate = "reboot bootloader",
             isDanger = true,
-            dangerDescription = "This will reboot your device into Fastboot/Bootloader mode. Make sure your device supports fastboot mode."
+            dangerDescription = "This will reboot your device into Fastboot/Bootloader mode. Make sure your device supports fastboot mode.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_reboot_recovery",
@@ -261,7 +279,8 @@ object TweakRepository {
             description = "Reboots device into recovery mode.",
             commandTemplate = "reboot recovery",
             isDanger = true,
-            dangerDescription = "This will reboot your device into stock/custom Recovery mode immediately."
+            dangerDescription = "This will reboot your device into stock/custom Recovery mode immediately.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_wm_size",
@@ -271,7 +290,8 @@ object TweakRepository {
             commandTemplate = "wm size {dimensions}",
             inputType = InputType.SingleText("Resolution (WidthxHeight)", "e.g. 1080x2400"),
             isDanger = true,
-            dangerDescription = "Setting an invalid or unsupported resolution can render the screen UI un-clickable or completely black!"
+            dangerDescription = "Setting an invalid or unsupported resolution can render the screen UI un-clickable or completely black!",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_emergency_reset_wm",
@@ -280,7 +300,8 @@ object TweakRepository {
             description = "Resets display resolution and DPI to factory defaults.",
             commandTemplate = "wm size reset && wm density reset",
             isDanger = true,
-            dangerDescription = "Resets display resolution and scaling density back to original stock values."
+            dangerDescription = "Resets display resolution and scaling density back to original stock values.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_disable_gms",
@@ -289,7 +310,8 @@ object TweakRepository {
             description = "Disables GMS (Completely breaks Google Play, Maps, Push notifications, and most apps).",
             commandTemplate = "pm disable-user --user 0 com.google.android.gms",
             isDanger = true,
-            dangerDescription = "Disabling Google Play Services will cause widespread app crashes, loss of push notifications, and account syncing errors!"
+            dangerDescription = "Disabling Google Play Services will cause widespread app crashes, loss of push notifications, and account syncing errors!",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_disable_systemui",
@@ -298,7 +320,8 @@ object TweakRepository {
             description = "Disables Android System UI (Black screen / frozen interface!).",
             commandTemplate = "pm disable-user --user 0 com.android.systemui",
             isDanger = true,
-            dangerDescription = "Disabling System UI will IMMEDIATELY render your status bar, navigation bar, and wallpaper black and unresponsive!"
+            dangerDescription = "Disabling System UI will IMMEDIATELY render your status bar, navigation bar, and wallpaper black and unresponsive!",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_kill_media_process",
@@ -307,7 +330,8 @@ object TweakRepository {
             description = "Forces termination of core media provider system process.",
             commandTemplate = "killall android.process.media",
             isDanger = true,
-            dangerDescription = "Terminating vital system processes may cause sudden app crashes, media store corruption, or system instability."
+            dangerDescription = "Terminating vital system processes may cause sudden app crashes, media store corruption, or system instability.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_disable_doze",
@@ -316,7 +340,8 @@ object TweakRepository {
             description = "Disables device battery Doze power saver mode.",
             commandTemplate = "dumpsys deviceidle disable",
             isDanger = true,
-            dangerDescription = "Disabling Doze mode will increase background power drain and reduce battery life."
+            dangerDescription = "Disabling Doze mode will increase background power drain and reduce battery life.",
+            requiresElevation = true
         ),
         TweakItem(
             id = "danger_doze_constants",
@@ -326,7 +351,8 @@ object TweakRepository {
             commandTemplate = "settings put global device_idle_constants {parameters}",
             inputType = InputType.SingleText("Parameters", "e.g. inactive_to=30000,sensing_to=0"),
             isDanger = true,
-            dangerDescription = "Invalid Doze constants can cause unexpected battery drain or system sleep issues."
+            dangerDescription = "Invalid Doze constants can cause unexpected battery drain or system sleep issues.",
+            requiresElevation = true
         )
     )
 }

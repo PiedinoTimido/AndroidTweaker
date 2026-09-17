@@ -25,5 +25,7 @@ data class TweakItem(
     val commandTemplate: String,
     val inputType: InputType = InputType.None,
     val isDanger: Boolean = false,
-    val dangerDescription: String = ""
+    val dangerDescription: String = "",
+    val requiresElevation: Boolean = false
 )
+

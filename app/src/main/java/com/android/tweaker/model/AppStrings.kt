@@ -4,6 +4,7 @@ data class Strings(
     // Drawer
     val navAdbConnection: String,
     val navTweaks: String,
+    val navAdbConsole: String,
     val navLanguage: String,
     val navInfo: String,
     val navLicenses: String,
@@ -63,6 +64,7 @@ object AppStringsProvider {
         AppLanguage.ENGLISH -> Strings(
             navAdbConnection = "Adb connection",
             navTweaks = "Tweaks",
+            navAdbConsole = "ADB Console",
             navLanguage = "Language",
             navInfo = "Info",
             navLicenses = "Opensource licenses",
@@ -119,6 +121,7 @@ object AppStringsProvider {
         AppLanguage.ITALIAN -> Strings(
             navAdbConnection = "Connessione Adb",
             navTweaks = "Tweaks",
+            navAdbConsole = "Console ADB",
             navLanguage = "Lingua",
             navInfo = "Info",
             navLicenses = "Licenze opensource",
@@ -175,6 +178,7 @@ object AppStringsProvider {
         AppLanguage.GERMAN -> Strings(
             navAdbConnection = "Adb-Verbindung",
             navTweaks = "Tweaks",
+            navAdbConsole = "ADB-Konsole",
             navLanguage = "Sprache",
             navInfo = "Info",
             navLicenses = "Open-Source-Lizenzen",
@@ -222,6 +226,7 @@ object AppStringsProvider {
         AppLanguage.FRENCH -> Strings(
             navAdbConnection = "Connexion Adb",
             navTweaks = "Tweaks",
+            navAdbConsole = "Console ADB",
             navLanguage = "Langue",
             navInfo = "Info",
             navLicenses = "Licences open source",
@@ -269,6 +274,7 @@ object AppStringsProvider {
         AppLanguage.SPANISH -> Strings(
             navAdbConnection = "Conexión Adb",
             navTweaks = "Tweaks",
+            navAdbConsole = "Consola ADB",
             navLanguage = "Idioma",
             navInfo = "Info",
             navLicenses = "Licencias de código abierto",
@@ -316,6 +322,7 @@ object AppStringsProvider {
         AppLanguage.PORTUGUESE -> Strings(
             navAdbConnection = "Conexão Adb",
             navTweaks = "Tweaks",
+            navAdbConsole = "Console ADB",
             navLanguage = "Idioma",
             navInfo = "Info",
             navLicenses = "Licenças de código aberto",
@@ -363,6 +370,7 @@ object AppStringsProvider {
         AppLanguage.RUSSIAN -> Strings(
             navAdbConnection = "Adb подключение",
             navTweaks = "Твики",
+            navAdbConsole = "Консоль ADB",
             navLanguage = "Язык",
             navInfo = "Инфо",
             navLicenses = "Лицензии Open Source",
@@ -410,6 +418,7 @@ object AppStringsProvider {
         AppLanguage.HINDI -> Strings(
             navAdbConnection = "Adb कनेक्शन",
             navTweaks = "ट्विक्स",
+            navAdbConsole = "ADB कंसोल",
             navLanguage = "भाषा",
             navInfo = "जानकारी",
             navLicenses = "ओपनसोर्स लाइसेंस",

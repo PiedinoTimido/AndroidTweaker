@@ -4,32 +4,42 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.tweaker.data.AdbManager
+import com.android.tweaker.data.BatteryInfoManager
 import com.android.tweaker.model.*
 import com.android.tweaker.ui.components.DangerConfirmationDialog
 import com.android.tweaker.ui.components.DangerDialogStep
+import com.android.tweaker.ui.components.ElevatedPrivilegesDialog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TweaksScreen(
     adbManager: AdbManager,
-    strings: Strings
+    strings: Strings,
+    isElevated: Boolean,
+    onToggleElevated: (Boolean) -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val allTweaks = remember { TweakRepository.getTweaks() }
@@ -45,6 +55,9 @@ fun TweaksScreen(
     var activeDangerTweak by remember { mutableStateOf<TweakItem?>(null) }
     var activeDangerFormattedCmd by remember { mutableStateOf("") }
     var dangerStep by remember { mutableStateOf(DangerDialogStep.NONE) }
+
+    // Elevated Privileges Dialog State
+    var showElevatedDialog by remember { mutableStateOf(false) }
 
     val filteredTweaks = remember(selectedCategory) {
         allTweaks.filter { it.category == selectedCategory }
@@ -65,6 +78,55 @@ fun TweaksScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Elevated Privileges Control Banner
+        Surface(
+            color = if (isElevated) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = if (isElevated) Icons.Default.LockOpen else Icons.Default.Lock,
+                        contentDescription = "Lock State",
+                        tint = if (isElevated) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isElevated) "Elevated Privileges Active" else "Standard Privileges",
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (isElevated) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+
+                Button(
+                    onClick = {
+                        if (isElevated) {
+                            scope.launch {
+                                adbManager.executeShellCommand("pm revoke com.android.tweaker android.permission.WRITE_SECURE_SETTINGS")
+                                adbManager.executeShellCommand("pm revoke com.android.tweaker android.permission.DUMP")
+                                onToggleElevated(false)
+                            }
+                        } else {
+                            showElevatedDialog = true
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isElevated) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text(
+                        text = if (isElevated) "Remove elevated privileges" else "Give elevated privileges",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
         // Scrollable Tab Row for Categories
         ScrollableTabRow(
             selectedTabIndex = TweakCategoryType.values().indexOf(selectedCategory),
@@ -105,6 +167,7 @@ fun TweaksScreen(
                 TweakCard(
                     tweak = tweak,
                     strings = strings,
+                    isElevated = isElevated,
                     onExecute = { formattedCmd ->
                         if (tweak.isDanger) {
                             activeDangerTweak = tweak
@@ -125,7 +188,7 @@ fun TweaksScreen(
         }
     }
 
-    // Output Result Dialog
+    // Scrollable Output Result Dialog
     if (showOutputDialog) {
         AlertDialog(
             onDismissRequest = { showOutputDialog = false },
@@ -143,13 +206,19 @@ fun TweaksScreen(
                         .fillMaxWidth()
                         .heightIn(max = 350.dp)
                 ) {
-                    SelectionContainer {
-                        Text(
-                            text = outputText,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(12.dp)
+                    ) {
+                        SelectionContainer {
+                            Text(
+                                text = outputText,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp
+                            )
+                        }
                     }
                 }
             },
@@ -158,6 +227,22 @@ fun TweaksScreen(
                     Text(strings.close)
                 }
             }
+        )
+    }
+
+    // Elevated Privileges Confirmation Dialog
+    if (showElevatedDialog) {
+        ElevatedPrivilegesDialog(
+            onDismiss = { showElevatedDialog = false },
+            onConfirmGrantElevated = {
+                showElevatedDialog = false
+                scope.launch {
+                    adbManager.executeShellCommand("pm grant com.android.tweaker android.permission.WRITE_SECURE_SETTINGS")
+                    adbManager.executeShellCommand("pm grant com.android.tweaker android.permission.DUMP")
+                    onToggleElevated(true)
+                }
+            },
+            strings = strings
         )
     }
 
@@ -197,11 +282,14 @@ fun TweaksScreen(
 fun TweakCard(
     tweak: TweakItem,
     strings: Strings,
+    isElevated: Boolean,
     onExecute: (String) -> Unit
 ) {
     var param1 by remember { mutableStateOf(if (tweak.inputType is InputType.SingleText) tweak.inputType.defaultValue else "") }
     var param2 by remember { mutableStateOf("") }
     var selectedOptionIndex by remember { mutableStateOf(if (tweak.inputType is InputType.Options) tweak.inputType.defaultIndex else 0) }
+
+    val isBlockedByElevation = tweak.requiresElevation && !isElevated
 
     Card(
         colors = CardDefaults.cardColors(
@@ -214,21 +302,53 @@ fun TweakCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (tweak.isDanger) {
-                    Icon(
-                        imageVector = Icons.Default.Warning,
-                        contentDescription = "Danger",
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(20.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    if (tweak.isDanger) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Danger",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                    Text(
+                        text = tweak.title,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = if (tweak.isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.width(6.dp))
                 }
-                Text(
-                    text = tweak.title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = if (tweak.isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                )
+
+                if (isBlockedByElevation) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Requires Elevated",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Requires elevated privileges",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -272,6 +392,7 @@ fun TweakCard(
                         label = { Text(input.label) },
                         placeholder = { Text(input.placeholder) },
                         singleLine = true,
+                        enabled = !isBlockedByElevation,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -284,6 +405,7 @@ fun TweakCard(
                             label = { Text(input.label1) },
                             placeholder = { Text(input.placeholder1) },
                             singleLine = true,
+                            enabled = !isBlockedByElevation,
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -292,6 +414,7 @@ fun TweakCard(
                             label = { Text(input.label2) },
                             placeholder = { Text(input.placeholder2) },
                             singleLine = true,
+                            enabled = !isBlockedByElevation,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -307,7 +430,8 @@ fun TweakCard(
                         input.options.forEachIndexed { idx, opt ->
                             FilterChip(
                                 selected = (selectedOptionIndex == idx),
-                                onClick = { selectedOptionIndex = idx },
+                                onClick = { if (!isBlockedByElevation) selectedOptionIndex = idx },
+                                enabled = !isBlockedByElevation,
                                 label = { Text(opt, fontSize = 11.sp) }
                             )
                         }
@@ -342,8 +466,10 @@ fun TweakCard(
                     }
                     onExecute(formattedCmd)
                 },
+                enabled = !isBlockedByElevation,
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (tweak.isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                    containerColor = if (tweak.isDanger) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
                 ),
                 modifier = Modifier.align(Alignment.End)
             ) {

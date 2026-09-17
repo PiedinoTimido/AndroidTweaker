@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 enum class AppNavigationItem(val icon: ImageVector) {
     ADB_CONNECTION(Icons.Default.Usb),
     TWEAKS(Icons.Default.Tune),
+    ADB_CONSOLE(Icons.Default.Terminal),
     LANGUAGE(Icons.Default.Language),
     INFO(Icons.Default.Info),
     LICENSES(Icons.Default.Description),
@@ -43,6 +44,9 @@ fun AndroidTweakerApp(
     }
     val strings = remember(currentLanguage) { AppStringsProvider.getStrings(currentLanguage) }
 
+    // Elevated Privileges state defaults to false on app launch (auto-removed on re-open)
+    var isElevated by remember { mutableStateOf(false) }
+
     var currentScreen by remember { mutableStateOf(AppNavigationItem.TWEAKS) }
     var showDisclaimer by remember { mutableStateOf(!prefs.isDisclaimerAccepted) }
 
@@ -59,6 +63,7 @@ fun AndroidTweakerApp(
     fun getScreenTitle(item: AppNavigationItem): String = when (item) {
         AppNavigationItem.ADB_CONNECTION -> strings.navAdbConnection
         AppNavigationItem.TWEAKS -> strings.navTweaks
+        AppNavigationItem.ADB_CONSOLE -> strings.navAdbConsole
         AppNavigationItem.LANGUAGE -> strings.navLanguage
         AppNavigationItem.INFO -> strings.navInfo
         AppNavigationItem.LICENSES -> strings.navLicenses
@@ -135,7 +140,13 @@ fun AndroidTweakerApp(
             ) {
                 when (currentScreen) {
                     AppNavigationItem.ADB_CONNECTION -> AdbConnectionScreen(adbManager, prefs, strings)
-                    AppNavigationItem.TWEAKS -> TweaksScreen(adbManager, strings)
+                    AppNavigationItem.TWEAKS -> TweaksScreen(
+                        adbManager = adbManager,
+                        strings = strings,
+                        isElevated = isElevated,
+                        onToggleElevated = { isElevated = it }
+                    )
+                    AppNavigationItem.ADB_CONSOLE -> AdbConsoleScreen(adbManager, strings)
                     AppNavigationItem.LANGUAGE -> LanguageScreen(
                         currentLanguage = currentLanguage,
                         onLanguageSelected = { lang ->
@@ -146,7 +157,12 @@ fun AndroidTweakerApp(
                     )
                     AppNavigationItem.INFO -> InfoScreen(strings)
                     AppNavigationItem.LICENSES -> LicensesScreen(strings)
-                    AppNavigationItem.RATE_US -> TweaksScreen(adbManager, strings)
+                    AppNavigationItem.RATE_US -> TweaksScreen(
+                        adbManager = adbManager,
+                        strings = strings,
+                        isElevated = isElevated,
+                        onToggleElevated = { isElevated = it }
+                    )
                 }
             }
         }
