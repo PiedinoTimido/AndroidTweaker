@@ -164,12 +164,17 @@ fun TweaksScreen(
             }
 
             items(filteredTweaks, key = { it.id }) { tweak ->
+                val context = LocalContext.current
                 TweakCard(
                     tweak = tweak,
                     strings = strings,
                     isElevated = isElevated,
                     onExecute = { formattedCmd ->
-                        if (tweak.isDanger) {
+                        if (tweak.commandTemplate == "__native_battery__") {
+                            outputTitle = tweak.title
+                            outputText = BatteryInfoManager.getBatteryStatus(context)
+                            showOutputDialog = true
+                        } else if (tweak.isDanger) {
                             activeDangerTweak = tweak
                             activeDangerFormattedCmd = formattedCmd
                             dangerStep = DangerDialogStep.STEP_ONE

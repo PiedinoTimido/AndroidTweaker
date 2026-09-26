@@ -63,18 +63,33 @@ class AdbManager {
     suspend fun executeShellCommand(command: String): String = withContext(Dispatchers.IO) {
         val cleanCmd = command.trim().removePrefix("adb shell ").trim()
         val dadb = dadbInstance
+        val isPrivileged = cleanCmd.startsWith("pm ") || 
+                           cleanCmd.startsWith("am ") || 
+                           cleanCmd.startsWith("cmd ") || 
+                           cleanCmd.startsWith("dumpsys ") || 
+                           cleanCmd.startsWith("wm ") || 
+                           cleanCmd.startsWith("input ") || 
+                           cleanCmd.startsWith("reboot") || 
+                           cleanCmd.startsWith("recovery")
+
         if (dadb != null) {
             try {
                 val response: AdbShellResponse = dadb.shell(cleanCmd)
                 val stdout = response.allOutput
                 if (stdout.isNotBlank()) stdout else "Command executed (Exit code: ${response.exitCode})"
             } catch (e: Exception) {
-                // Fallback to local Runtime.exec shell if dadb encounters socket issue
-                executeLocalShell(cleanCmd)
+                if (isPrivileged) {
+                    "⚠️ ADB Socket Error: ${e.localizedMessage}\n\nPrivileged commands must be executed through an authenticated ADB Wireless socket. Please reconnect via the ADB Connection screen."
+                } else {
+                    executeLocalShell(cleanCmd)
+                }
             }
         } else {
-            // Fallback to local Runtime shell
-            executeLocalShell(cleanCmd)
+            if (isPrivileged) {
+                "⚠️ ADB Session Required!\n\nThis command requires an active ADB Wireless socket connection. Please connect your device via the ADB Connection screen."
+            } else {
+                executeLocalShell(cleanCmd)
+            }
         }
     }
 
