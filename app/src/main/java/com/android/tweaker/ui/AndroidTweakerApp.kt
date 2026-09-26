@@ -24,6 +24,8 @@ enum class AppNavigationItem(val icon: ImageVector) {
     ADB_CONNECTION(Icons.Default.Usb),
     TWEAKS(Icons.Default.Tune),
     ADB_CONSOLE(Icons.Default.Terminal),
+    LOGCAT(Icons.Default.BugReport),
+    SAVED_LOGS(Icons.Default.Folder),
     LANGUAGE(Icons.Default.Language),
     INFO(Icons.Default.Info),
     LICENSES(Icons.Default.Description),
@@ -45,7 +47,6 @@ fun AndroidTweakerApp(
     }
     val strings = remember(currentLanguage) { AppStringsProvider.getStrings(currentLanguage) }
 
-    // Elevated Privileges state defaults to false on app launch (auto-removed on re-open)
     var isElevated by remember { mutableStateOf(false) }
 
     val adbStatus by adbManager.connectionStatus.collectAsState()
@@ -54,7 +55,6 @@ fun AndroidTweakerApp(
     var currentScreen by remember { mutableStateOf(AppNavigationItem.ADB_CONNECTION) }
     var showDisclaimer by remember { mutableStateOf(!prefs.isDisclaimerAccepted) }
 
-    // Automatic startup ADB connection attempt (USB 5555 first, then saved wireless)
     LaunchedEffect(Unit) {
         val success = adbManager.autoConnectOnStartup(prefs.lastAdbPort)
         if (success) {
@@ -78,6 +78,8 @@ fun AndroidTweakerApp(
         AppNavigationItem.ADB_CONNECTION -> strings.navAdbConnection
         AppNavigationItem.TWEAKS -> strings.navTweaks
         AppNavigationItem.ADB_CONSOLE -> strings.navAdbConsole
+        AppNavigationItem.LOGCAT -> "Logcat"
+        AppNavigationItem.SAVED_LOGS -> "Log Salvati"
         AppNavigationItem.LANGUAGE -> strings.navLanguage
         AppNavigationItem.INFO -> strings.navInfo
         AppNavigationItem.LICENSES -> strings.navLicenses
@@ -208,6 +210,8 @@ fun AndroidTweakerApp(
                         }
                     }
                     AppNavigationItem.ADB_CONSOLE -> AdbConsoleScreen(adbManager, strings)
+                    AppNavigationItem.LOGCAT -> LogcatScreen(adbManager, strings)
+                    AppNavigationItem.SAVED_LOGS -> SavedLogsScreen(strings)
                     AppNavigationItem.LANGUAGE -> LanguageScreen(
                         currentLanguage = currentLanguage,
                         onLanguageSelected = { lang ->

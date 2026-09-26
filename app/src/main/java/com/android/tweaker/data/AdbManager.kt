@@ -16,13 +16,17 @@ import java.io.InputStreamReader
 sealed class AdbConnectionStatus {
     object Disconnected : AdbConnectionStatus()
     object Connecting : AdbConnectionStatus()
-    data class Connected(val port: Int) : AdbConnectionStatus()
+    data class Connected(val port: Int, val isUsb: Boolean) : AdbConnectionStatus()
     data class Error(val message: String) : AdbConnectionStatus()
 }
 
 class AdbManager {
     private var dadbInstance: Dadb? = null
     private var keyFileDir: File? = null
+    var connectedPort: Int = 0
+        private set
+    var isConnectedViaUsb: Boolean = false
+        private set
 
     private val _connectionStatus = MutableStateFlow<AdbConnectionStatus>(AdbConnectionStatus.Disconnected)
     val connectionStatus: StateFlow<AdbConnectionStatus> = _connectionStatus.asStateFlow()
@@ -52,7 +56,9 @@ class AdbManager {
             _connectionStatus.value = AdbConnectionStatus.Connecting
             val dadb = createDadbInstance("127.0.0.1", port)
             dadbInstance = dadb
-            _connectionStatus.value = AdbConnectionStatus.Connected(port)
+            connectedPort = port
+            isConnectedViaUsb = (port == 5555)
+            _connectionStatus.value = AdbConnectionStatus.Connected(port, isConnectedViaUsb)
             Result.success("Paired & connected successfully to 127.0.0.1:$port!")
         } catch (e: Exception) {
             _connectionStatus.value = AdbConnectionStatus.Error("Pairing/Connection failed: ${e.message}")
@@ -65,7 +71,9 @@ class AdbManager {
             _connectionStatus.value = AdbConnectionStatus.Connecting
             val dadb = createDadbInstance("127.0.0.1", port)
             dadbInstance = dadb
-            _connectionStatus.value = AdbConnectionStatus.Connected(port)
+            connectedPort = port
+            isConnectedViaUsb = (port == 5555)
+            _connectionStatus.value = AdbConnectionStatus.Connected(port, isConnectedViaUsb)
             Result.success("Successfully connected to local ADB on 127.0.0.1:$port!")
         } catch (e: Exception) {
             _connectionStatus.value = AdbConnectionStatus.Error("Connection failed: ${e.message}")
@@ -78,7 +86,9 @@ class AdbManager {
         try {
             val dadbUsb = createDadbInstance("127.0.0.1", 5555)
             dadbInstance = dadbUsb
-            _connectionStatus.value = AdbConnectionStatus.Connected(5555)
+            connectedPort = 5555
+            isConnectedViaUsb = true
+            _connectionStatus.value = AdbConnectionStatus.Connected(5555, true)
             return@withContext true
         } catch (_: Exception) {}
 
@@ -88,7 +98,9 @@ class AdbManager {
             try {
                 val dadbWireless = createDadbInstance("127.0.0.1", savedPort)
                 dadbInstance = dadbWireless
-                _connectionStatus.value = AdbConnectionStatus.Connected(savedPort)
+                connectedPort = savedPort
+                isConnectedViaUsb = false
+                _connectionStatus.value = AdbConnectionStatus.Connected(savedPort, false)
                 return@withContext true
             } catch (_: Exception) {}
         }
@@ -100,20 +112,14 @@ class AdbManager {
             dadbInstance?.close()
         } catch (_: Exception) {}
         dadbInstance = null
+        connectedPort = 0
+        isConnectedViaUsb = false
         _connectionStatus.value = AdbConnectionStatus.Disconnected
     }
 
     suspend fun executeShellCommand(command: String): String = withContext(Dispatchers.IO) {
         val cleanCmd = command.trim().removePrefix("adb shell ").trim()
         val dadb = dadbInstance
-        val isPrivileged = cleanCmd.startsWith("pm ") || 
-                           cleanCmd.startsWith("am ") || 
-                           cleanCmd.startsWith("cmd ") || 
-                           cleanCmd.startsWith("dumpsys ") || 
-                           cleanCmd.startsWith("wm ") || 
-                           cleanCmd.startsWith("input ") || 
-                           cleanCmd.startsWith("reboot") || 
-                           cleanCmd.startsWith("recovery")
 
         if (dadb != null) {
             try {
@@ -121,18 +127,15 @@ class AdbManager {
                 val stdout = response.allOutput
                 if (stdout.isNotBlank()) stdout else "Command executed (Exit code: ${response.exitCode})"
             } catch (e: Exception) {
-                if (isPrivileged) {
-                    "⚠️ ADB Socket Error: ${e.localizedMessage}\n\nPrivileged commands must be executed through an authenticated ADB Wireless socket. Please reconnect via the ADB Connection screen."
+                val errMsg = e.localizedMessage ?: e.message ?: "Unknown error"
+                if (errMsg.contains("Permission", ignoreCase = true) || errMsg.contains("Operation not permitted", ignoreCase = true) || errMsg.contains("Socket", ignoreCase = true)) {
+                    "⚠️ ADB Socket Error: $errMsg\n\nPlease reconnect via the ADB Connection screen."
                 } else {
                     executeLocalShell(cleanCmd)
                 }
             }
         } else {
-            if (isPrivileged) {
-                "⚠️ ADB Session Required!\n\nThis command requires an active ADB Wireless socket connection. Please connect your device via the ADB Connection screen."
-            } else {
-                executeLocalShell(cleanCmd)
-            }
+            executeLocalShell(cleanCmd)
         }
     }
 
@@ -151,9 +154,9 @@ class AdbManager {
             }
             process.waitFor()
             val result = output.toString().trim()
-            if (result.isNotEmpty()) result else "Command completed via local shell. (Note: Wireless ADB connection is recommended for system permission tweaks)."
+            if (result.isNotEmpty()) result else "Command completed via local shell."
         } catch (e: Exception) {
-            "Execution error: ${e.localizedMessage}\n\nPlease connect Wireless ADB via the ADB Connection screen."
+            "Execution error: ${e.localizedMessage}\n\nPlease connect ADB via the ADB Connection screen."
         }
     }
 }
