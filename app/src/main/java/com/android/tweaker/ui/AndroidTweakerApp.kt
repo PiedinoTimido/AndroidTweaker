@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.android.tweaker.data.AdbConnectionStatus
 import com.android.tweaker.data.AdbManager
 import com.android.tweaker.data.PreferencesManager
 import com.android.tweaker.model.AppLanguage
@@ -47,8 +48,21 @@ fun AndroidTweakerApp(
     // Elevated Privileges state defaults to false on app launch (auto-removed on re-open)
     var isElevated by remember { mutableStateOf(false) }
 
-    var currentScreen by remember { mutableStateOf(AppNavigationItem.TWEAKS) }
+    val adbStatus by adbManager.connectionStatus.collectAsState()
+    val isConnected = adbStatus is AdbConnectionStatus.Connected
+
+    var currentScreen by remember { mutableStateOf(AppNavigationItem.ADB_CONNECTION) }
     var showDisclaimer by remember { mutableStateOf(!prefs.isDisclaimerAccepted) }
+
+    // Automatic startup ADB connection attempt (USB 5555 first, then saved wireless)
+    LaunchedEffect(Unit) {
+        val success = adbManager.autoConnectOnStartup(prefs.lastAdbPort)
+        if (success) {
+            currentScreen = AppNavigationItem.TWEAKS
+        } else {
+            currentScreen = AppNavigationItem.ADB_CONNECTION
+        }
+    }
 
     if (showDisclaimer) {
         DisclaimerDialog(
@@ -140,12 +154,59 @@ fun AndroidTweakerApp(
             ) {
                 when (currentScreen) {
                     AppNavigationItem.ADB_CONNECTION -> AdbConnectionScreen(adbManager, prefs, strings)
-                    AppNavigationItem.TWEAKS -> TweaksScreen(
-                        adbManager = adbManager,
-                        strings = strings,
-                        isElevated = isElevated,
-                        onToggleElevated = { isElevated = it }
-                    )
+                    AppNavigationItem.TWEAKS -> {
+                        if (!isConnected) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.background,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(24.dp),
+                                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Warning,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(64.dp)
+                                    )
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text(
+                                        text = "IMPOSSIBILE AVVIARE I TWEAKS",
+                                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                        color = MaterialTheme.colorScheme.error,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "adb non connesso",
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                    )
+                                    Spacer(modifier = Modifier.height(24.dp))
+                                    Button(
+                                        onClick = { currentScreen = AppNavigationItem.ADB_CONNECTION },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Icon(Icons.Default.Usb, contentDescription = null)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Connetti ad adb", fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+                        } else {
+                            TweaksScreen(
+                                adbManager = adbManager,
+                                strings = strings,
+                                isElevated = isElevated,
+                                onToggleElevated = { isElevated = it }
+                            )
+                        }
+                    }
                     AppNavigationItem.ADB_CONSOLE -> AdbConsoleScreen(adbManager, strings)
                     AppNavigationItem.LANGUAGE -> LanguageScreen(
                         currentLanguage = currentLanguage,
@@ -157,12 +218,7 @@ fun AndroidTweakerApp(
                     )
                     AppNavigationItem.INFO -> InfoScreen(strings)
                     AppNavigationItem.LICENSES -> LicensesScreen(strings)
-                    AppNavigationItem.RATE_US -> TweaksScreen(
-                        adbManager = adbManager,
-                        strings = strings,
-                        isElevated = isElevated,
-                        onToggleElevated = { isElevated = it }
-                    )
+                    AppNavigationItem.RATE_US -> {}
                 }
             }
         }

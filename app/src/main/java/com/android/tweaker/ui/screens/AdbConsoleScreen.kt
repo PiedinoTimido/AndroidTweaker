@@ -26,21 +26,24 @@ import com.android.tweaker.data.AdbManager
 import com.android.tweaker.model.Strings
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdbConsoleScreen(
     adbManager: AdbManager,
     strings: Strings
 ) {
     val scope = rememberCoroutineScope()
+    var isShellMode by remember { mutableStateOf(false) }
     var commandInput by remember { mutableStateOf("") }
-    var consoleLogs by remember { mutableStateOf("Android Tweaker Local ADB Shell [LADB Mode]\nType your command below and press Run.\n\n") }
+    var consoleLogs by remember { mutableStateOf("Android Tweaker Local ADB Console\nType your command below and press Run.\n\n") }
     val scrollState = rememberScrollState()
 
     fun runCmd(cmdStr: String) {
         if (cmdStr.isBlank()) return
         val commandToExecute = cmdStr.trim()
         commandInput = ""
-        consoleLogs += "$ adb shell $commandToExecute\n"
+        val prefix = if (isShellMode) "$ adb shell " else "$ adb "
+        consoleLogs += "$prefix$commandToExecute\n"
 
         scope.launch {
             val result = adbManager.executeShellCommand(commandToExecute)
@@ -54,6 +57,28 @@ fun AdbConsoleScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Top Console Mode Selector
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
+            SegmentedButton(
+                selected = !isShellMode,
+                onClick = { isShellMode = false },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
+            ) {
+                Text("Console ADB", fontWeight = FontWeight.Bold)
+            }
+            SegmentedButton(
+                selected = isShellMode,
+                onClick = { isShellMode = true },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
+            ) {
+                Text("Console ADB SHELL", fontWeight = FontWeight.Bold)
+            }
+        }
+
         // Developer Warning Banner
         Card(
             colors = CardDefaults.cardColors(
@@ -134,8 +159,8 @@ fun AdbConsoleScreen(
             OutlinedTextField(
                 value = commandInput,
                 onValueChange = { commandInput = it },
-                placeholder = { Text("e.g. pm list packages") },
-                label = { Text("ADB Shell Command") },
+                placeholder = { Text(if (isShellMode) "e.g. pm list packages" else "e.g. shell pm list packages") },
+                label = { Text(if (isShellMode) "ADB Shell Command" else "ADB Command") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { runCmd(commandInput) }),

@@ -1,14 +1,16 @@
 package com.android.tweaker.data
 
+import android.content.Context
 import dadb.Dadb
+import dadb.AdbKeyPair
 import dadb.AdbShellResponse
-
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
+import java.io.File
 import java.io.InputStreamReader
 
 sealed class AdbConnectionStatus {
@@ -20,15 +22,35 @@ sealed class AdbConnectionStatus {
 
 class AdbManager {
     private var dadbInstance: Dadb? = null
+    private var keyFileDir: File? = null
 
     private val _connectionStatus = MutableStateFlow<AdbConnectionStatus>(AdbConnectionStatus.Disconnected)
     val connectionStatus: StateFlow<AdbConnectionStatus> = _connectionStatus.asStateFlow()
 
+    fun initContext(context: Context) {
+        keyFileDir = context.filesDir
+    }
+
+    private fun createDadbInstance(host: String, port: Int): Dadb {
+        val dir = keyFileDir
+        if (dir != null) {
+            try {
+                val privateKeyFile = File(dir, "adbkey")
+                val publicKeyFile = File(dir, "adbkey.pub")
+                if (!privateKeyFile.exists() || !publicKeyFile.exists()) {
+                    dadb.AdbKeyPair.generate(privateKeyFile, publicKeyFile)
+                }
+                val keyPair = dadb.AdbKeyPair.read(privateKeyFile, publicKeyFile)
+                return Dadb.create(host, port, keyPair)
+            } catch (_: Exception) {}
+        }
+        return Dadb.create(host, port)
+    }
+
     suspend fun pairDevice(port: Int, code: String): Result<String> = withContext(Dispatchers.IO) {
         try {
             _connectionStatus.value = AdbConnectionStatus.Connecting
-            // Connect using Dadb connection to localhost pairing port
-            val dadb = Dadb.create("127.0.0.1", port)
+            val dadb = createDadbInstance("127.0.0.1", port)
             dadbInstance = dadb
             _connectionStatus.value = AdbConnectionStatus.Connected(port)
             Result.success("Paired & connected successfully to 127.0.0.1:$port!")
@@ -38,11 +60,10 @@ class AdbManager {
         }
     }
 
-
     suspend fun connectDevice(port: Int): Result<String> = withContext(Dispatchers.IO) {
         try {
             _connectionStatus.value = AdbConnectionStatus.Connecting
-            val dadb = Dadb.create("127.0.0.1", port)
+            val dadb = createDadbInstance("127.0.0.1", port)
             dadbInstance = dadb
             _connectionStatus.value = AdbConnectionStatus.Connected(port)
             Result.success("Successfully connected to local ADB on 127.0.0.1:$port!")
@@ -50,6 +71,28 @@ class AdbManager {
             _connectionStatus.value = AdbConnectionStatus.Error("Connection failed: ${e.message}")
             Result.failure(e)
         }
+    }
+
+    suspend fun autoConnectOnStartup(lastAdbPortStr: String): Boolean = withContext(Dispatchers.IO) {
+        // Try USB default port 5555 first
+        try {
+            val dadbUsb = createDadbInstance("127.0.0.1", 5555)
+            dadbInstance = dadbUsb
+            _connectionStatus.value = AdbConnectionStatus.Connected(5555)
+            return@withContext true
+        } catch (_: Exception) {}
+
+        // Try saved last ADB Wireless port if different
+        val savedPort = lastAdbPortStr.toIntOrNull()
+        if (savedPort != null && savedPort != 5555) {
+            try {
+                val dadbWireless = createDadbInstance("127.0.0.1", savedPort)
+                dadbInstance = dadbWireless
+                _connectionStatus.value = AdbConnectionStatus.Connected(savedPort)
+                return@withContext true
+            } catch (_: Exception) {}
+        }
+        false
     }
 
     fun disconnect() {

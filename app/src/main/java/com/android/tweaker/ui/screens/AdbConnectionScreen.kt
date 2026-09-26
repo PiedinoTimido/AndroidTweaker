@@ -1,5 +1,6 @@
 package com.android.tweaker.ui.screens
 
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -18,7 +19,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -39,7 +39,10 @@ fun AdbConnectionScreen(
     val scope = rememberCoroutineScope()
     val status by adbManager.connectionStatus.collectAsState()
 
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    val isAndroid11OrHigher = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+    var selectedTabIndex by remember { mutableStateOf(if (isAndroid11OrHigher) 0 else 1) }
+
+    var showWirelessDialog by remember { mutableStateOf(false) }
 
     var pairPort by remember { mutableStateOf(prefs.lastPairPort) }
     var pairCode by remember { mutableStateOf(prefs.lastPairCode) }
@@ -104,125 +107,70 @@ fun AdbConnectionScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Connection Method Tab Selector
-        TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.fillMaxWidth()) {
-            Tab(
-                selected = selectedTabIndex == 0,
-                onClick = { selectedTabIndex = 0 },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Wireless (No PC)", fontWeight = FontWeight.SemiBold)
+        // Connection Method Tab Selector (Wireless hidden if Android < 11)
+        if (isAndroid11OrHigher) {
+            TabRow(selectedTabIndex = selectedTabIndex, modifier = Modifier.fillMaxWidth()) {
+                Tab(
+                    selected = selectedTabIndex == 0,
+                    onClick = { selectedTabIndex = 0 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Wireless (No PC)", fontWeight = FontWeight.SemiBold)
+                        }
                     }
-                }
-            )
-            Tab(
-                selected = selectedTabIndex == 1,
-                onClick = { selectedTabIndex = 1 },
-                text = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Via PC (USB)", fontWeight = FontWeight.SemiBold)
+                )
+                Tab(
+                    selected = selectedTabIndex == 1,
+                    onClick = { selectedTabIndex = 1 },
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Usb, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Via PC (USB)", fontWeight = FontWeight.SemiBold)
+                        }
                     }
-                }
-            )
+                )
+            }
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        if (selectedTabIndex == 0) {
+        if (isAndroid11OrHigher && selectedTabIndex == 0) {
             // --- WIRELESS DEBUGGING MODE ---
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.SignalWifi4Bar, contentDescription = "Wireless", tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = strings.guideTitle,
+                            text = "Connessione Wireless Debugging",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = strings.guideSteps,
+                        text = "Connetti l'app direttamente in locale senza bisogno di un computer su Android 11+.",
                         style = MaterialTheme.typography.bodySmall,
-                        lineHeight = 18.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pairing Section
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = strings.pairHeader,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedTextField(
-                            value = pairPort,
-                            onValueChange = {
-                                pairPort = it
-                                prefs.lastPairPort = it
-                            },
-                            label = { Text(strings.pairPortLabel) },
-                            placeholder = { Text("e.g. 38451") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        OutlinedTextField(
-                            value = pairCode,
-                            onValueChange = {
-                                pairCode = it
-                                prefs.lastPairCode = it
-                            },
-                            label = { Text(strings.pairCodeLabel) },
-                            placeholder = { Text("6 digits") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     Button(
-                        onClick = {
-                            val portInt = pairPort.toIntOrNull()
-                            if (portInt == null || pairCode.length < 5) {
-                                message = "Please enter valid Pairing Port and 6-digit Code"
-                                isError = true
-                                return@Button
-                            }
-                            scope.launch {
-                                val res = adbManager.pairDevice(portInt, pairCode)
-                                if (res.isSuccess) {
-                                    message = res.getOrDefault("Pairing successful!")
-                                    isError = false
-                                } else {
-                                    message = res.exceptionOrNull()?.localizedMessage ?: "Pairing failed"
-                                    isError = true
-                                }
-                            }
-                        },
+                        onClick = { showWirelessDialog = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.PhonelinkSetup, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(strings.pairButton)
+                        Text("Avvia connessione wireless", fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ADB Wireless Connection Section
+            // Quick Direct Connection input
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -325,7 +273,6 @@ fun AdbConnectionScreen(
                     Button(
                         onClick = {
                             scope.launch {
-                                // Attempt ADB daemon connection on default port 5555 or custom port
                                 val targetPort = adbPort.toIntOrNull() ?: 5555
                                 val res = adbManager.connectDevice(targetPort)
                                 if (res.isSuccess) {
@@ -362,5 +309,113 @@ fun AdbConnectionScreen(
                 )
             }
         }
+    }
+
+    // Wireless Debugging Step-by-Step Instruction Dialog
+    if (showWirelessDialog) {
+        AlertDialog(
+            onDismissRequest = { showWirelessDialog = false },
+            icon = {
+                Icon(Icons.Default.SignalWifi4Bar, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            },
+            title = {
+                Text(
+                    text = "Istruzioni Connessione Wireless",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                )
+            },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = "Verifica che ti siano arrivate 2 notifiche, una volta arrivate, apri le impostazioni sviluppatore, clicca su \"Debug wireless\", poi \"Connetti con codice\", inserisci nella notifica \"Ip and Port config.\" l'ip e la porta (Scritti così: IP1.IP2.IP3.IP4:PORT), una volta fatto nella seconda notifica inserisci il pin. Se fatto correttamente dovrebbe uscire come dispositivo accoppiato \"ANDROID TWEAKER\", finito torna nell'app e clicca il pulsante qui sotto \"Verifica connessione adb\".",
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 20.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = pairPort,
+                            onValueChange = {
+                                pairPort = it
+                                prefs.lastPairPort = it
+                            },
+                            label = { Text("Porta Accoppiamento") },
+                            placeholder = { Text("es. 38451") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        OutlinedTextField(
+                            value = pairCode,
+                            onValueChange = {
+                                pairCode = it
+                                prefs.lastPairCode = it
+                            },
+                            label = { Text("Codice PIN") },
+                            placeholder = { Text("6 cifre") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = adbPort,
+                        onValueChange = {
+                            adbPort = it
+                            prefs.lastAdbPort = it
+                        },
+                        label = { Text("Porta ADB Wireless") },
+                        placeholder = { Text("es. 5555 o porta principale") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val portInt = pairPort.toIntOrNull()
+                        val mainPortInt = adbPort.toIntOrNull() ?: portInt
+                        if (portInt == null || pairCode.length < 5) {
+                            message = "Inserisci porta e codice validi"
+                            isError = true
+                            return@Button
+                        }
+                        scope.launch {
+                            val resPair = adbManager.pairDevice(portInt, pairCode)
+                            if (resPair.isSuccess) {
+                                message = "Accoppiamento ed ADB connessi con successo!"
+                                isError = false
+                                showWirelessDialog = false
+                            } else {
+                                if (mainPortInt != null) {
+                                    val resConn = adbManager.connectDevice(mainPortInt)
+                                    if (resConn.isSuccess) {
+                                        message = "Connessione ADB riuscita!"
+                                        isError = false
+                                        showWirelessDialog = false
+                                        return@launch
+                                    }
+                                }
+                                message = resPair.exceptionOrNull()?.localizedMessage ?: "Connessione fallita"
+                                isError = true
+                            }
+                        }
+                    }
+                ) {
+                    Text("Verifica connessione adb", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showWirelessDialog = false }) {
+                    Text("Annulla")
+                }
+            }
+        )
     }
 }

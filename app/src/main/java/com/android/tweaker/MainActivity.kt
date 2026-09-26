@@ -19,6 +19,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         adbManager = AdbManager()
+        adbManager.initContext(this)
         prefs = PreferencesManager(this)
 
         setContent {
